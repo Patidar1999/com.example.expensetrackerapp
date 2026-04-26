@@ -1,2 +1,2 @@
-# com.example.expensetrackerapp
+ExpenseTrackerApp
 A beautiful expense tracker app
