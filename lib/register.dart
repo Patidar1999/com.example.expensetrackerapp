@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -29,12 +30,26 @@ class _MyRegisterState extends State<MyRegister> {
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
       );
-      print(userCredential);
+
+      // ✅ Save display name to Firebase Auth
+      await userCredential.user?.updateDisplayName(nameController.text.trim());
+
+      // ✅ Save user data to Firestore
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userCredential.user!.uid)
+          .set({
+        'name':      nameController.text.trim(),
+        'email':     emailController.text.trim(),
+        'createdAt': Timestamp.now(),
+      });
+
+      print("User created: ${userCredential.user?.uid}");
 
       // ✅ Navigate to login after successful signup
-      Navigator.pushNamed(context, 'login');
+      Navigator.pushNamed(context, '/');
+
     } on FirebaseAuthException catch (e) {
-      // ✅ Show error as a SnackBar
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.message ?? 'Registration failed')),
       );

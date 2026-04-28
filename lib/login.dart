@@ -13,10 +13,11 @@ class _LoginPageState extends State<LoginPage> {
 
   final TextEditingController emailController= TextEditingController();
   final TextEditingController passwordController= TextEditingController();
+  final user = FirebaseAuth.instance.currentUser;
 
 
 
-@override
+  @override
 void disose(){
   emailController.dispose();
   passwordController.dispose();
@@ -34,6 +35,10 @@ Future<void> signInWithEmailAndPassword()async {
   }
 }
 
+  // UserSession.set(
+  //    name: user?.displayName ?? 'User',
+  //    email: user?.email ?? '',
+  // );
 
   @override
   Widget build(BuildContext context) {

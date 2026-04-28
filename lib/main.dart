@@ -1,6 +1,7 @@
 import 'package:expense_tracker/home_screen.dart';
 import 'package:expense_tracker/login.dart';
 import 'package:expense_tracker/register.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'firebase_options.dart';
@@ -24,7 +25,20 @@ class ExpenseTrackerApp extends StatelessWidget {
       title: 'Expense Tracker',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.theme,
-      home: LoginPage(), // 👈 Use home instead of initialRoute
+      home: StreamBuilder(
+        stream: FirebaseAuth.instance.authStateChanges(),
+        builder: (context, snapshot) {
+          if(snapshot.connectionState == ConnectionState.waiting){
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
+          }
+          if(snapshot.data != null){
+            return const HomeScreen();
+          }
+          return LoginPage();
+        }
+      ), // 👈 Use home instead of initialRoute
       routes: {
         'login': (context) => LoginPage(),
         'register': (context) => MyRegister(),
@@ -34,3 +48,4 @@ class ExpenseTrackerApp extends StatelessWidget {
     );
   }
 }
+

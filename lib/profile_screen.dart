@@ -1,4 +1,5 @@
-import 'package:expense_tracker/login.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import 'app_theme.dart';
@@ -12,6 +13,31 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   bool _darkMode = false;
   String _currency = 'INR (₹)';
+  String _userName= "";
+  String _userEmail= "";
+
+
+  void initState(){
+    super.initState();
+      _loadUserData();
+  }
+
+
+  Future<void> _loadUserData() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
+
+    setState(() {
+      _userName  = doc.data()?['name'] ?? user.displayName ?? 'User';
+      _userEmail = user.email ?? '';
+    });
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +68,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     shape: BoxShape.circle,
                   ),
                   child: const Center(
-                    child: Text('RK',
+                    child: Text('',
                         style: TextStyle(
                             color: Colors.white,
                             fontSize: 22,
@@ -50,14 +76,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
                 const SizedBox(height: 10),
-                const Text('Shubham Patidar',
-                    style: TextStyle(
+                 Text(_userName,
+                    style: const TextStyle(
                         color: Colors.white,
                         fontSize: 18,
                         fontWeight: FontWeight.w500)),
                 const SizedBox(height: 4),
-                const Text('Spatidar8090@gmail.com',
-                    style: TextStyle(
+                Text(_userEmail,
+                    style: const TextStyle(
                         color: Colors.white70, fontSize: 12)),
                 const SizedBox(height: 16),
                 Row(
@@ -274,7 +300,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           TextButton(
             onPressed: () =>
-          Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false),
+          Navigator.pushNamedAndRemoveUntil(context, 'login', (route) => false),
             child: const Text('Log out',
                 style: TextStyle(color: AppTheme.expense)),
           ),
