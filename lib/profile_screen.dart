@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -13,31 +12,39 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   bool _darkMode = false;
   String _currency = 'INR (₹)';
-  String _userName= "";
-  String _userEmail= "";
 
+  // ✅ Live Firebase user
+  User? get _user => FirebaseAuth.instance.currentUser;
 
-  void initState(){
-    super.initState();
-      _loadUserData();
+  // ✅ Smart display name: uses displayName or falls back to email prefix
+  String get _displayName {
+    if (_user == null) return 'User';
+    final name = _user!.displayName ?? '';
+    if (name.trim().isNotEmpty) return name.trim();
+
+    // Fallback: derive readable name from email prefix
+    // e.g. shubham.patidar@gmail.com → "Shubham Patidar"
+    final email = _user!.email ?? '';
+    if (email.isEmpty) return 'User';
+    final prefix = email.split('@').first;
+    return prefix
+        .split(RegExp(r'[._\-]'))
+        .where((p) => p.isNotEmpty)
+        .map((p) => '${p[0].toUpperCase()}${p.substring(1).toLowerCase()}')
+        .join(' ');
   }
 
-
-  Future<void> _loadUserData() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    final doc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .get();
-
-    setState(() {
-      _userName  = doc.data()?['name'] ?? user.displayName ?? 'User';
-      _userEmail = user.email ?? '';
-    });
+  // ✅ Avatar initials (e.g. "Shubham Patidar" → "SP")
+  String get _initials {
+    final parts = _displayName.trim().split(' ').where((p) => p.isNotEmpty).toList();
+    if (parts.length >= 2) return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
+    if (parts.isNotEmpty && parts.first.length >= 2) {
+      return parts.first.substring(0, 2).toUpperCase();
+    }
+    return 'U';
   }
 
+  String get _email => _user?.email ?? 'No email found';
 
   @override
   Widget build(BuildContext context) {
@@ -60,50 +67,59 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             child: Column(
               children: [
+                // ✅ Avatar with dynamic initials
                 Container(
-                  width: 64,
-                  height: 64,
+                  width: 72,
+                  height: 72,
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.25),
                     shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white38, width: 2),
                   ),
-                  child: const Center(
-                    child: Text('',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 22,
-                            fontWeight: FontWeight.w500)),
+                  child: Center(
+                    child: Text(
+                      _initials,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 10),
-                 Text(_userName,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w500)),
+                const SizedBox(height: 12),
+
+                // ✅ Dynamic display name
+                Text(
+                  _displayName,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text(_userEmail,
-                    style: const TextStyle(
-                        color: Colors.white70, fontSize: 12)),
-                const SizedBox(height: 16),
+
+                // ✅ Dynamic email
+                Text(
+                  _email,
+                  style: const TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+                const SizedBox(height: 20),
+
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const _StatPill(
-                        label: 'Transactions', value: '12'),
+                    const _StatPill(label: 'Transactions', value: '12'),
                     Container(
-                        width: 0.5,
-                        height: 28,
-                        color: Colors.white30,
-                        margin: const EdgeInsets.symmetric(
-                            horizontal: 20)),
+                      width: 0.5, height: 28, color: Colors.white30,
+                      margin: const EdgeInsets.symmetric(horizontal: 20),
+                    ),
                     const _StatPill(label: 'Budgets', value: '5'),
                     Container(
-                        width: 0.5,
-                        height: 28,
-                        color: Colors.white30,
-                        margin: const EdgeInsets.symmetric(
-                            horizontal: 20)),
+                      width: 0.5, height: 28, color: Colors.white30,
+                      margin: const EdgeInsets.symmetric(horizontal: 20),
+                    ),
                     const _StatPill(label: 'Since', value: 'Apr'),
                   ],
                 ),
@@ -111,31 +127,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
         ),
+
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
           sliver: SliverList(
             delegate: SliverChildListDelegate([
               const _SectionLabel(label: 'ACCOUNT'),
               _ProfileRow(
-                  emoji: '👤',
-                  label: 'Edit profile',
-                  bg: AppTheme.primarySurface,
-                  onTap: () => _showSnack('Edit profile')),
+                emoji: '👤',
+                label: 'Edit profile',
+                bg: AppTheme.primarySurface,
+                onTap: () => _showSnack('Edit profile'),
+              ),
               _ProfileRow(
-                  emoji: '🔔',
-                  label: 'Notifications',
-                  bg: const Color(0xFFE1F5EE),
-                  onTap: () => _showSnack('Notifications')),
+                emoji: '🔔',
+                label: 'Notifications',
+                bg: const Color(0xFFE1F5EE),
+                onTap: () => _showSnack('Notifications'),
+              ),
               _ProfileRow(
-                  emoji: '💳',
-                  label: 'Payment methods',
-                  bg: const Color(0xFFFAEEDA),
-                  onTap: () => _showSnack('Payment methods')),
+                emoji: '💳',
+                label: 'Payment methods',
+                bg: const Color(0xFFFAEEDA),
+                onTap: () => _showSnack('Payment methods'),
+              ),
+
               const _SectionLabel(label: 'PREFERENCES'),
+
+              // Dark mode toggle
               Container(
                 margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 decoration: BoxDecoration(
                   color: AppTheme.bgCard,
                   borderRadius: BorderRadius.circular(14),
@@ -144,36 +166,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Row(
                   children: [
                     Container(
-                      width: 36,
-                      height: 36,
+                      width: 36, height: 36,
                       decoration: BoxDecoration(
                         color: const Color(0xFFE3F2FD),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Center(
-                          child: Text('🌙',
-                              style: TextStyle(fontSize: 16))),
+                      child: const Center(child: Text('🌙', style: TextStyle(fontSize: 16))),
                     ),
                     const SizedBox(width: 12),
                     const Expanded(
-                        child: Text('Dark mode',
-                            style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                                color: AppTheme.textPrimary))),
+                      child: Text('Dark mode',
+                          style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: AppTheme.textPrimary)),
+                    ),
                     Switch(
                       value: _darkMode,
-                      onChanged: (v) =>
-                          setState(() => _darkMode = v),
+                      onChanged: (v) => setState(() => _darkMode = v),
                       activeColor: AppTheme.primary,
                     ),
                   ],
                 ),
               ),
+
+              // Currency picker
               Container(
                 margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 decoration: BoxDecoration(
                   color: AppTheme.bgCard,
                   borderRadius: BorderRadius.circular(14),
@@ -182,58 +202,60 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Row(
                   children: [
                     Container(
-                      width: 36,
-                      height: 36,
+                      width: 36, height: 36,
                       decoration: BoxDecoration(
                         color: const Color(0xFFFCE4EC),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: const Center(
-                          child: Text('₹',
-                              style: TextStyle(
-                                  fontSize: 16,
-                                  color: AppTheme.textPrimary))),
+                        child: Text('₹',
+                            style: TextStyle(fontSize: 16, color: AppTheme.textPrimary)),
+                      ),
                     ),
                     const SizedBox(width: 12),
                     const Expanded(
-                        child: Text('Currency',
-                            style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                                color: AppTheme.textPrimary))),
+                      child: Text('Currency',
+                          style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: AppTheme.textPrimary)),
+                    ),
                     GestureDetector(
                       onTap: _pickCurrency,
                       child: Row(children: [
                         Text(_currency,
                             style: const TextStyle(
-                                fontSize: 12,
-                                color: AppTheme.textSecondary)),
+                                fontSize: 12, color: AppTheme.textSecondary)),
                         const SizedBox(width: 4),
                         const Icon(Icons.chevron_right_rounded,
-                            color: AppTheme.textSecondary,
-                            size: 18),
+                            color: AppTheme.textSecondary, size: 18),
                       ]),
                     ),
                   ],
                 ),
               ),
+
               _ProfileRow(
-                  emoji: '📤',
-                  label: 'Export data',
-                  bg: const Color(0xFFE8F5E9),
-                  onTap: () => _showSnack('Exporting...')),
+                emoji: '📤',
+                label: 'Export data',
+                bg: const Color(0xFFE8F5E9),
+                onTap: () => _showSnack('Exporting...'),
+              ),
+
               const _SectionLabel(label: 'SUPPORT'),
               _ProfileRow(
-                  emoji: '❓',
-                  label: 'Help & feedback',
-                  bg: const Color(0xFFF3E5F5),
-                  onTap: () => _showSnack('Help')),
+                emoji: '❓',
+                label: 'Help & feedback',
+                bg: const Color(0xFFF3E5F5),
+                onTap: () => _showSnack('Help'),
+              ),
               _ProfileRow(
-                  emoji: '🚪',
-                  label: 'Log out',
-                  bg: const Color(0xFFFFEBEE),
-                  textColor: AppTheme.expense,
-                  onTap: _confirmLogout),
+                emoji: '🚪',
+                label: 'Log out',
+                bg: const Color(0xFFFFEBEE),
+                textColor: AppTheme.expense,
+                onTap: _confirmLogout,
+              ),
             ]),
           ),
         ),
@@ -246,8 +268,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       content: Text(msg),
       backgroundColor: AppTheme.primary,
       behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
     ));
   }
 
@@ -256,22 +277,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
       context: context,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-          borderRadius:
-          BorderRadius.vertical(top: Radius.circular(20))),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => Column(
         mainAxisSize: MainAxisSize.min,
-        children: [
-          'INR (₹)',
-          'USD (\$)',
-          'EUR (€)',
-          'GBP (£)',
-          'JPY (¥)',
-        ]
+        children: ['INR (₹)', 'USD (\$)', 'EUR (€)', 'GBP (£)', 'JPY (¥)']
             .map((c) => ListTile(
           title: Text(c),
           trailing: _currency == c
-              ? const Icon(Icons.check,
-              color: AppTheme.primary)
+              ? const Icon(Icons.check, color: AppTheme.primary)
               : null,
           onTap: () {
             setState(() => _currency = c);
@@ -287,20 +300,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Log out?'),
-        content:
-        const Text('Are you sure you want to log out?'),
+        content: const Text('Are you sure you want to log out?'),
         actions: [
-          // Fixed: use onPressed instead of onTap
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () =>
-          Navigator.pushNamedAndRemoveUntil(context, 'login', (route) => false),
+            onPressed: () async {
+              // ✅ Proper Firebase sign out clears the session
+              await FirebaseAuth.instance.signOut();
+              if (context.mounted) {
+                Navigator.pushNamedAndRemoveUntil(
+                    context, '/', (route) => false);
+              }
+            },
             child: const Text('Log out',
                 style: TextStyle(color: AppTheme.expense)),
           ),
@@ -309,6 +325,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 }
+
+// ─────────────────────────────────────────────
+// Helper Widgets
+// ─────────────────────────────────────────────
 
 class _StatPill extends StatelessWidget {
   final String label, value;
@@ -321,8 +341,7 @@ class _StatPill extends StatelessWidget {
             fontSize: 16,
             fontWeight: FontWeight.w500)),
     Text(label,
-        style: const TextStyle(
-            color: Colors.white60, fontSize: 10)),
+        style: const TextStyle(color: Colors.white60, fontSize: 10)),
   ]);
 }
 
@@ -358,8 +377,7 @@ class _ProfileRow extends StatelessWidget {
     onTap: onTap,
     child: Container(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(
-          horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: AppTheme.bgCard,
         borderRadius: BorderRadius.circular(14),
@@ -367,23 +385,21 @@ class _ProfileRow extends StatelessWidget {
       ),
       child: Row(children: [
         Container(
-          width: 36,
-          height: 36,
+          width: 36, height: 36,
           decoration: BoxDecoration(
-            color: bg,
-            borderRadius: BorderRadius.circular(10),
+            color: bg, borderRadius: BorderRadius.circular(10),
           ),
           child: Center(
-              child: Text(emoji,
-                  style: const TextStyle(fontSize: 16))),
+              child: Text(emoji, style: const TextStyle(fontSize: 16))),
         ),
         const SizedBox(width: 12),
         Expanded(
-            child: Text(label,
-                style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: textColor))),
+          child: Text(label,
+              style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: textColor)),
+        ),
         const Icon(Icons.chevron_right_rounded,
             color: AppTheme.textSecondary, size: 18),
       ]),

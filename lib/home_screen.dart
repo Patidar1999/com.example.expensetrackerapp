@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'add_expense_screen.dart';
@@ -164,6 +165,54 @@ class _DashboardPage extends StatelessWidget {
     required this.onDeleteExpense,
   });
 
+  // ✅ Get current Firebase user
+  User? get _user => FirebaseAuth.instance.currentUser;
+
+  // ✅ Dynamic display name from Firebase
+  String get _displayName {
+    if (_user == null) return 'User';
+    final name = _user!.displayName ?? '';
+    if (name.trim().isNotEmpty) return name.trim();
+
+    // Fallback: derive from email prefix (e.g. shubham.patidar@gmail.com → Shubham Patidar)
+    final email = _user!.email ?? '';
+    if (email.isEmpty) return 'User';
+    final prefix = email.split('@').first;
+    return prefix
+        .split(RegExp(r'[._\-]'))
+        .where((p) => p.isNotEmpty)
+        .map((p) => '${p[0].toUpperCase()}${p.substring(1).toLowerCase()}')
+        .join(' ');
+  }
+
+  // ✅ Avatar initials (e.g. "Shubham Patidar" → "SP")
+  String get _initials {
+    final parts = _displayName.trim().split(' ').where((p) => p.isNotEmpty).toList();
+    if (parts.length >= 2) return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
+    if (parts.isNotEmpty && parts.first.length >= 2) {
+      return parts.first.substring(0, 2).toUpperCase();
+    }
+    return 'U';
+  }
+
+  // ✅ Time-based greeting
+  String get _greeting {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
+    if (hour < 21) return 'Good Evening';
+    return 'Good Night';
+  }
+
+  // ✅ Greeting emoji based on time
+  String get _greetingEmoji {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return '☀️';
+    if (hour < 17) return '🌤️';
+    if (hour < 21) return '🌆';
+    return '🌙';
+  }
+
   @override
   Widget build(BuildContext context) {
     final recent = expenses.take(5).toList();
@@ -185,23 +234,60 @@ class _DashboardPage extends StatelessWidget {
                   end: Alignment.bottomRight,
                 ),
               ),
-              padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + 12, left: 16, right: 16, bottom: 32),
+              padding: EdgeInsets.only(
+                top: MediaQuery.of(context).padding.top + 12,
+                left: 16,
+                right: 16,
+                bottom: 32,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
+                      // ✅ Dynamic avatar with initials
                       Container(
-                        width: 36, height: 36,
-                        decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(18)),
-                        child: const Center(child: Text('RK', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500))),
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white24,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.white38, width: 1.5),
+                        ),
+                        child: Center(
+                          child: Text(
+                            _initials,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
                       ),
                       const SizedBox(width: 10),
-                      const Column(
+                      // ✅ Dynamic greeting + name
+                      Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Good Morning', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                          Text('Shubham Patidar', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500)),
+                          Row(
+                            children: [
+                              Text(
+                                _greeting,
+                                style: const TextStyle(color: Colors.white70, fontSize: 12),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(_greetingEmoji, style: const TextStyle(fontSize: 12)),
+                            ],
+                          ),
+                          Text(
+                            _displayName,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
                         ],
                       ),
                       const Spacer(),
@@ -212,6 +298,7 @@ class _DashboardPage extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 16),
+                  // Balance card
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -221,15 +308,32 @@ class _DashboardPage extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Total Balance', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                        const Text('Total Balance',
+                            style: TextStyle(color: Colors.white70, fontSize: 12)),
                         const SizedBox(height: 4),
-                        Text(fmt(balance), style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w500)),
+                        Text(fmt(balance),
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 28,
+                                fontWeight: FontWeight.w500)),
                         const SizedBox(height: 12),
                         Row(
                           children: [
-                            Expanded(child: _BalancePill(label: 'Income', value: fmt(totalIncome), dotColor: const Color(0xFF5CFFC0))),
+                            Expanded(
+                              child: _BalancePill(
+                                label: 'Income',
+                                value: fmt(totalIncome),
+                                dotColor: const Color(0xFF5CFFC0),
+                              ),
+                            ),
                             const SizedBox(width: 10),
-                            Expanded(child: _BalancePill(label: 'Expenses', value: fmt(totalExpense), dotColor: const Color(0xFFFF7EB3))),
+                            Expanded(
+                              child: _BalancePill(
+                                label: 'Expenses',
+                                value: fmt(totalExpense),
+                                dotColor: const Color(0xFFFF7EB3),
+                              ),
+                            ),
                           ],
                         ),
                       ],
@@ -253,15 +357,32 @@ class _DashboardPage extends StatelessWidget {
                     // Quick actions
                     Row(
                       children: [
-                        _QuickBtn(emoji: '➕', label: 'Add', bg: AppTheme.primarySurface, onTap: () async {
-                          await Navigator.push(context, MaterialPageRoute(builder: (_) => const AddExpenseScreen()));
-                          onRefresh();
-                        }),
+                        _QuickBtn(
+                          emoji: '➕',
+                          label: 'Add',
+                          bg: AppTheme.primarySurface,
+                          onTap: () async {
+                            await Navigator.push(context,
+                                MaterialPageRoute(builder: (_) => const AddExpenseScreen()));
+                            onRefresh();
+                          },
+                        ),
                         _QuickBtn(emoji: '📊', label: 'Stats', bg: const Color(0xFFE1F5EE), onTap: () {}),
                         _QuickBtn(emoji: '📂', label: 'Budget', bg: const Color(0xFFFAEEDA), onTap: () {}),
-                        _QuickBtn(emoji: '↗', label: 'Export', bg: const Color(0xFFFAECE7), onTap: () {
-                          Navigator.push(context, MaterialPageRoute(builder: (_) => TransactionsScreen(expenses: expenses, onDelete: onDeleteExpense)));
-                        }),
+                        _QuickBtn(
+                          emoji: '↗',
+                          label: 'Export',
+                          bg: const Color(0xFFFAECE7),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => TransactionsScreen(
+                                    expenses: expenses, onDelete: onDeleteExpense),
+                              ),
+                            );
+                          },
+                        ),
                       ],
                     ),
                     const SizedBox(height: 16),
@@ -276,7 +397,11 @@ class _DashboardPage extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Weekly spending', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppTheme.textPrimary)),
+                          const Text('Weekly spending',
+                              style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppTheme.textPrimary)),
                           const SizedBox(height: 12),
                           SizedBox(
                             height: 80,
@@ -294,12 +419,17 @@ class _DashboardPage extends StatelessWidget {
                                         height: h > 0 ? h : 4,
                                         margin: const EdgeInsets.symmetric(horizontal: 3),
                                         decoration: BoxDecoration(
-                                          color: isToday ? AppTheme.primary : const Color(0xFFDED9F8),
+                                          color: isToday
+                                              ? AppTheme.primary
+                                              : const Color(0xFFDED9F8),
                                           borderRadius: BorderRadius.circular(5),
                                         ),
                                       ),
                                       const SizedBox(height: 4),
-                                      Text(days[i], style: const TextStyle(fontSize: 9, color: AppTheme.textSecondary)),
+                                      Text(days[i],
+                                          style: const TextStyle(
+                                              fontSize: 9,
+                                              color: AppTheme.textSecondary)),
                                     ],
                                   ),
                                 );
@@ -313,8 +443,13 @@ class _DashboardPage extends StatelessWidget {
                     SectionHeader(
                       title: 'Recent transactions',
                       actionText: 'See all',
-                      onAction: () => Navigator.push(context,
-                          MaterialPageRoute(builder: (_) => TransactionsScreen(expenses: expenses, onDelete: onDeleteExpense))),
+                      onAction: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => TransactionsScreen(
+                              expenses: expenses, onDelete: onDeleteExpense),
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -342,7 +477,8 @@ class _DashboardPage extends StatelessWidget {
 class _BalancePill extends StatelessWidget {
   final String label, value;
   final Color dotColor;
-  const _BalancePill({required this.label, required this.value, required this.dotColor});
+  const _BalancePill(
+      {required this.label, required this.value, required this.dotColor});
 
   @override
   Widget build(BuildContext context) {
@@ -356,12 +492,21 @@ class _BalancePill extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            Container(width: 6, height: 6, decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle)),
+            Container(
+                width: 6,
+                height: 6,
+                decoration:
+                BoxDecoration(color: dotColor, shape: BoxShape.circle)),
             const SizedBox(width: 4),
-            Text(label, style: const TextStyle(color: Colors.white70, fontSize: 10)),
+            Text(label,
+                style: const TextStyle(color: Colors.white70, fontSize: 10)),
           ]),
           const SizedBox(height: 3),
-          Text(value, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500)),
+          Text(value,
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500)),
         ],
       ),
     );
@@ -372,7 +517,11 @@ class _QuickBtn extends StatelessWidget {
   final String emoji, label;
   final Color bg;
   final VoidCallback onTap;
-  const _QuickBtn({required this.emoji, required this.label, required this.bg, required this.onTap});
+  const _QuickBtn(
+      {required this.emoji,
+        required this.label,
+        required this.bg,
+        required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -390,12 +539,19 @@ class _QuickBtn extends StatelessWidget {
           child: Column(
             children: [
               Container(
-                width: 32, height: 32,
-                decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
-                child: Center(child: Text(emoji, style: const TextStyle(fontSize: 15))),
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                    color: bg, borderRadius: BorderRadius.circular(10)),
+                child:
+                Center(child: Text(emoji, style: const TextStyle(fontSize: 15))),
               ),
               const SizedBox(height: 5),
-              Text(label, style: const TextStyle(fontSize: 10, color: AppTheme.textMuted, fontWeight: FontWeight.w500)),
+              Text(label,
+                  style: const TextStyle(
+                      fontSize: 10,
+                      color: AppTheme.textMuted,
+                      fontWeight: FontWeight.w500)),
             ],
           ),
         ),
